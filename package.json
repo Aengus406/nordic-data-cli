@@ -1,0 +1,48 @@
+{
+  "name": "nordic-data",
+  "version": "0.1.0",
+  "description": "CLI for Nordic Data — every Norwegian company as one API. Look up companies, board members, owners, sanctions, procurement, EU grants, and financial summaries from your terminal.",
+  "bin": {
+    "nordic-data": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "norway",
+    "norwegian",
+    "company",
+    "data",
+    "brreg",
+    "bronnoysund",
+    "aksjonaerregisteret",
+    "doffin",
+    "kyb",
+    "aml",
+    "sanctions",
+    "cli",
+    "mcp",
+    "nordic-data"
+  ],
+  "homepage": "https://nordicdata.cloud",
+  "bugs": {
+    "url": "https://github.com/nordic-data/cli/issues",
+    "email": "support@nordicdata.cloud"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nordic-data/cli.git"
+  },
+  "license": "MIT",
+  "author": "Nordic Data <support@nordicdata.cloud> (https://nordicdata.cloud)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "node bin/cli.js --version"
+  },
+  "dependencies": {}
+}
