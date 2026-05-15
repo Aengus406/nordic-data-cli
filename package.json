@@ -1,7 +1,7 @@
 {
   "name": "nordic-data",
-  "version": "0.1.0",
-  "description": "CLI for Nordic Data — every Norwegian company as one API. Look up companies, board members, owners, sanctions, procurement, EU grants, and financial summaries from your terminal.",
+  "version": "0.3.0",
+  "description": "CLI for Nordic Data \u2014 every Norwegian and Swedish company as one API. Look up companies, board members, owners, sanctions, public procurement, R&D grants, AI-enriched contacts (NO + SE), and financial summaries from your terminal.",
   "bin": {
     "nordic-data": "./bin/cli.js"
   },
@@ -13,16 +13,16 @@
   "keywords": [
     "norway",
     "norwegian",
+    "sweden",
+    "swedish",
+    "nordic",
     "company",
     "data",
-    "brreg",
-    "bronnoysund",
-    "aksjonaerregisteret",
-    "doffin",
+    "cli",
     "kyb",
     "aml",
     "sanctions",
-    "cli",
+    "procurement",
     "mcp",
     "nordic-data"
   ],
