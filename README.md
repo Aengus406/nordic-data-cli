@@ -43,10 +43,10 @@ You can also pass `--key <key>` per invocation.
 | `contacts <orgnr>` | Emails, phones, and named executives |
 | `board <orgnr>` | Current board + leadership |
 | `finances <orgnr>` | Latest financial summary (revenue, operating profit, equity, ratios) |
-| `procurement <orgnr>` | Doffin public-sector contract aggregates |
-| `grants <orgnr>` | EU R&D grants (Horizon Europe, EIC) |
+| `procurement <orgnr>` | Public-sector contract aggregates (NO + EU) |
+| `grants <orgnr>` | EU R&D grant participations |
 | `sanctions <orgnr>` | Sanctions screening (EU, UN, OFAC) hits |
-| `shareholders <orgnr>` | Aksjonærregisteret aggregates |
+| `shareholders <orgnr>` | Shareholder graph aggregates (Norway) |
 | `mcp` | Show MCP setup snippet for Claude Desktop or Cursor |
 | `signup` | Open the free-tier signup in your browser |
 
@@ -131,12 +131,12 @@ prints the JSON snippet to drop into your MCP client config. Or visit our listin
 
 Every Norwegian company joined on the organisation number:
 
-- **Brønnøysundregistrene** — name, address, NACE, status, board, signatories (real-time, < 5 min lag)
-- **Aksjonærregisteret** — shareholders with recursive UBO chain (annual snapshot)
-- **Doffin** — public-sector procurement filings (live)
-- **EU R&D grants** — Horizon Europe, EIC, joined to Norwegian recipients
+- **Identity & corporate filings** — name, address, NACE, status, board, signatories (live, < 5 min lag)
+- **Shareholders + UBO** — recursive ownership chains for Norway
+- **Public procurement** — Norwegian + EU-wide contract filings, live
+- **EU R&D grants** — joined to Norwegian recipients
 - **Sanctions** — EU, UN, OFAC, screened by org and by officer
-- **Enriched contacts** — 4-layer pipeline lifts contact-fill rate from 23% to 81% on the top 5,000 companies. [How it works](https://nordicdata.cloud/blog/four-layer-contact-enrichment).
+- **AI-enriched contacts** — 4-layer pipeline lifts contact-fill rate from 23% to 81% on the top 5,000 companies. [How it works](https://nordicdata.cloud/blog/four-layer-contact-enrichment).
 - **Financial summaries** — revenue, operating profit, equity, ratios — last 5 reported years
 
 ## Pricing
