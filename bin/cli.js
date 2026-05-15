@@ -28,6 +28,7 @@ const HELP = `${c('bold', 'nordic-data')} ${c('dim', '— every Norwegian compan
 
 ${c('bold', 'USAGE')}
   nordic-data <command> [args]
+  nordic-data <command> --help    ${c('dim', '# per-command help with examples')}
 
 ${c('bold', 'COMMANDS')}
   search <query>             Search companies by name or org number
@@ -35,10 +36,11 @@ ${c('bold', 'COMMANDS')}
   contacts <orgnr>           Emails, phones, and named executives
   board <orgnr>              Board + leadership
   finances <orgnr>           Latest financial summary
-  procurement <orgnr>        Public-sector contract aggregates (Doffin)
-  grants <orgnr>             EU R&D grants (Horizon, EIC)
+  procurement <orgnr>        Public-sector contract aggregates (NO + EU)
+  grants <orgnr>             EU R&D grant participations
   sanctions <orgnr>          Sanctions screening (EU/UN/OFAC) hits
-  shareholders <orgnr>       Aksjonærregisteret aggregates
+  shareholders <orgnr>       Shareholder graph aggregates (Norway)
+  contacts-se <orgnr>        Sweden: identity + AI-enriched contacts (10-digit orgnr)
   mcp                        Show MCP setup snippet for Claude Desktop / Cursor
   signup                     Open the free-tier signup page in your browser
   --help, -h                 Show this help
@@ -55,6 +57,9 @@ ${c('bold', 'EXAMPLES')}
   nordic-data lookup 923609016
   nordic-data contacts 923609016
 
+  ${c('dim', '# Sweden: lookup + AI-enriched contacts (10-digit orgnr)')}
+  nordic-data contacts-se 5566370985
+
   ${c('dim', '# Use your API key for higher limits')}
   export NORDIC_DATA_KEY=nrd_live_...
   nordic-data lookup 923609016 --json | jq
@@ -63,26 +68,159 @@ ${c('bold', 'EXAMPLES')}
   nordic-data mcp
 
 ${c('bold', 'FREE TIER')}
-  ${c('orange', '5,000 requests per month, no card.')} Get a key at
+  ${c('orange', '500 requests per month, no card.')} Get a key at
   ${c('cyan', 'https://nordicdata.cloud/?signup=free')}
   ${c('dim', 'Without a key, this CLI uses the public widget tier (4 lookups/IP/24h).')}
 `;
 
+// Per-command help text. Shown when user runs `nordic-data <cmd> --help`.
+const COMMAND_HELP = {
+  search: `${c('bold', 'nordic-data search')} ${c('dim', '<query> [--json]')}
+
+Search Norwegian companies by name or organisation number.
+
+${c('bold', 'EXAMPLES')}
+  ${c('dim', '# Fuzzy name search')}
+  nordic-data search equinor
+
+  ${c('dim', '# JSON for scripting')}
+  nordic-data search "telenor" --json | jq '.results[0].orgnr'
+
+  ${c('dim', '# Lookup by orgnr also works as a single-result search')}
+  nordic-data search 923609016
+`,
+  lookup: `${c('bold', 'nordic-data lookup')} ${c('dim', '<orgnr> [--json]')}
+
+Full snapshot of one company. Includes identity, address, key personnel,
+contacts, and a sanctions hit count.
+
+${c('bold', 'ORGNR FORMATS')}
+  9 digits   ${c('dim', '— Norway (e.g. 923609016)')}
+  10 digits  ${c('dim', '— Sweden (e.g. 5566370985 or 556637-0985) — auto-routes to Sweden command')}
+
+${c('bold', 'EXAMPLES')}
+  ${c('dim', '# Norway')}
+  nordic-data lookup 923609016
+
+  ${c('dim', '# Sweden (10-digit orgnr — auto-detected)')}
+  nordic-data lookup 5566370985
+
+  ${c('dim', '# Raw JSON')}
+  nordic-data lookup 923609016 --json | jq .identity.name
+`,
+  contacts: `${c('bold', 'nordic-data contacts')} ${c('dim', '<orgnr> [--json]')}
+
+Verified emails, phones, and named executives for a Norwegian company.
+Cached 30 days. Empty when no public contact info is available.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data contacts 923609016
+  nordic-data contacts 923609016 --json
+`,
+  'contacts-se': `${c('bold', 'nordic-data contacts-se')} ${c('dim', '<orgnr> [--json]')}
+
+Sweden: identity + AI-enriched contacts (verified emails, phones, named executives).
+
+${c('bold', 'EXAMPLES')}
+  nordic-data contacts-se 5566370985
+  nordic-data contacts-se 556637-0985   ${c('dim', '# dash is accepted')}
+`,
+  board: `${c('bold', 'nordic-data board')} ${c('dim', '<orgnr> [--json]')}
+
+Current board + leadership for a Norwegian company. Shows role category
+(styre / ledelse / other) and full role description.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data board 923609016
+`,
+  finances: `${c('bold', 'nordic-data finances')} ${c('dim', '<orgnr> [--json]')}
+
+Latest annual accounts for a Norwegian company: revenue, operating profit,
+net result, balance sheet totals, equity, and computed ratios.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data finances 923609016
+  nordic-data finances 923609016 --json | jq .ratios
+`,
+  procurement: `${c('bold', 'nordic-data procurement')} ${c('dim', '<orgnr> [--json]')}
+
+Public-sector contract aggregates for a Norwegian company — count of
+contracts won, estimated total value, top buyers.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data procurement 923609016
+`,
+  grants: `${c('bold', 'nordic-data grants')} ${c('dim', '<orgnr> [--json]')}
+
+EU R&D grant participations for a Norwegian company. Returns each grant
+with role (coordinator/participant), EU contribution, project budget.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data grants 923609016
+`,
+  sanctions: `${c('bold', 'nordic-data sanctions')} ${c('dim', '<orgnr> [--json]')}
+
+Sanctions / AML / KYC check. Screens the company AND its officers against
+international watchlists (OFAC SDN; EU + UN forthcoming). Auto-fetches
+officers if not yet cached — one call gives you the full picture.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data sanctions 923609016
+`,
+  shareholders: `${c('bold', 'nordic-data shareholders')} ${c('dim', '<orgnr> [--json]')}
+
+Shareholder cap table for a Norwegian AS — ownership %, share count, identity
+of each holder.
+
+${c('bold', 'EXAMPLES')}
+  nordic-data shareholders 923609016
+`,
+  mcp: `${c('bold', 'nordic-data mcp')}
+
+Print the MCP server config snippet to drop into Claude Desktop / Cursor.
+Set NORDIC_DATA_KEY first to embed your key in the snippet.
+
+${c('bold', 'EXAMPLES')}
+  ${c('dim', '# Print the snippet')}
+  nordic-data mcp
+
+  ${c('dim', '# Wire your key in the printed snippet')}
+  export NORDIC_DATA_KEY=nrd_live_...
+  nordic-data mcp
+`,
+  signup: `${c('bold', 'nordic-data signup')}
+
+Open the free-tier signup page in your browser. 500 requests/month, no card.
+`,
+};
+
 const args = process.argv.slice(2);
 let useJson = false;
 let useColor = isTTY;
+let wantsHelp = false;
 const cleanArgs = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--json') useJson = true;
   else if (a === '--no-color') useColor = false;
   else if (a === '--key') { process.env.NORDIC_DATA_KEY = args[++i] || ''; }
-  else if (a === '--help' || a === '-h') { console.log(HELP); process.exit(0); }
+  else if (a === '--help' || a === '-h') wantsHelp = true;
   else if (a === '--version' || a === '-v') {
     const { version } = require('../package.json');
     console.log(version);
     process.exit(0);
   } else cleanArgs.push(a);
+}
+
+// Resolve per-command help: `nordic-data <cmd> --help` shows command-specific help.
+// `nordic-data --help` (no command) shows the global help.
+if (wantsHelp) {
+  if (cleanArgs.length > 0 && COMMAND_HELP[cleanArgs[0]]) {
+    console.log(COMMAND_HELP[cleanArgs[0]]);
+  } else {
+    console.log(HELP);
+  }
+  process.exit(0);
 }
 if (cleanArgs.length === 0) { console.log(HELP); process.exit(0); }
 
@@ -100,10 +238,26 @@ async function publicRequest(path) {
 
   const res = await fetch(`${API_BASE}${path}`, { headers });
   if (!res.ok) {
-    if (res.status === 429) die('Rate limited. Free tier is 4 lookups per IP per 24h. Set NORDIC_DATA_KEY=... for higher limits.');
-    if (res.status === 401) die('Auth required. Set NORDIC_DATA_KEY=... or use --key. Sign up at https://nordicdata.cloud/?signup=free');
-    if (res.status === 404) die('Not found.');
-    die(`API error ${res.status}: ${await res.text()}`);
+    if (res.status === 429) die('Rate limited. Free tier is 4 lookups per IP per 24h. Set NORDIC_DATA_KEY=... for higher limits.\n  Sign up at https://nordicdata.cloud/?signup=free (500 requests/month, no card).');
+    if (res.status === 401) die('Auth required. Set NORDIC_DATA_KEY=... or pass --key <key>.\n  Sign up at https://nordicdata.cloud/?signup=free (500 requests/month, no card).');
+    // Try to parse a structured JSON error and surface a useful message + hint.
+    let body = null;
+    try { body = await res.json(); } catch {}
+    const errCode = body && body.error;
+    const errMsg = body && body.message;
+    if (res.status === 404) {
+      if (errCode === 'not_found' && body.orgnr) {
+        die(`Company ${body.orgnr} not found in the official register.\n  ${c('dim', 'If you do not know the orgnr, try:')} nordic-data search <name>`);
+      }
+      die(`Not found.\n  ${c('dim', 'Tip:')} nordic-data search <name>  ${c('dim', 'to find the orgnr first.')}`);
+    }
+    if (res.status === 400 && errCode === 'invalid_orgnr') {
+      die(`Invalid Norwegian organisation number — must be 9 digits.\n  ${c('dim', 'Tip:')} nordic-data search <name>  ${c('dim', 'to find the orgnr.')}`);
+    }
+    if (res.status === 400 && errMsg) die(errMsg);
+    if (res.status === 402) die(`Payment required. ${errMsg || 'Plan does not include this endpoint.'}\n  See plans: https://nordicdata.cloud/#pricing`);
+    if (res.status >= 500) die(`Server error (${res.status}). Try again in a moment. If it persists, email support@nordicdata.cloud.`);
+    die(`API error ${res.status}: ${errMsg || (body && JSON.stringify(body)) || 'unknown error'}`);
   }
   return res.json();
 }
@@ -149,7 +303,16 @@ async function search(query) {
 }
 
 async function lookup(orgnr) {
-  if (!orgnr) die('Usage: nordic-data lookup <orgnr>');
+  if (!orgnr) die('Usage: nordic-data lookup <orgnr>\n  Norway: 9-digit orgnr. Sweden: 10-digit orgnr (with or without dash).');
+  // Auto-route Swedish orgnrs (10 digits, with or without dash) to the SE flow.
+  const cleaned = String(orgnr).replace(/[-\s]/g, '');
+  if (/^\d{10}$/.test(cleaned)) {
+    console.log(c('dim', `(10-digit orgnr detected — routing to Sweden command)\n`));
+    return contactsSe(orgnr);
+  }
+  if (!/^\d{9}$/.test(cleaned)) {
+    die(`Invalid orgnr "${orgnr}".\n  Norway uses 9 digits (e.g. 923609016).\n  Sweden uses 10 digits (e.g. 5566370985 or 556637-0985).\n  ${c('dim', 'Tip:')} nordic-data search <name>  ${c('dim', 'to find it.')}`);
+  }
   const snap = await publicRequest(`/_/look/${orgnr}`);
   if (useJson) return console.log(JSON.stringify(snap, null, 2));
 
@@ -258,7 +421,7 @@ async function procurement(orgnr) {
   const snap = await publicRequest(`/_/look/${orgnr}`);
   const p = snap.procurement || {};
   if (useJson) return console.log(JSON.stringify(p, null, 2));
-  header(`Doffin procurement aggregates for ${id(snap).name || orgnr}`);
+  header(`Public procurement aggregates for ${id(snap).name || orgnr}`);
   pretty('Tenders as buyer', `${p.tenders_as_buyer_24m || 0} (24m)`);
   pretty('Contracts won',    `${p.contracts_won_24m || 0} (24m)`);
   pretty('Contract value',   p.contract_wins_value_24m && `NOK ${p.contract_wins_value_24m.toLocaleString('nb-NO')} (24m)`);
@@ -311,11 +474,38 @@ async function shareholders(orgnr) {
   const snap = await publicRequest(`/_/look/${orgnr}`);
   const sh = snap.shareholders || {};
   if (useJson) return console.log(JSON.stringify(sh, null, 2));
-  header(`Aksjonærregisteret summary for ${id(snap).name || orgnr}`);
+  header(`Shareholder summary for ${id(snap).name || orgnr}`);
   pretty('Fiscal year',  sh.fiscal_year);
   pretty('Shareholders', sh.count);
   pretty('Total shares', sh.total_shares && sh.total_shares.toLocaleString('nb-NO'));
   console.log(c('dim', '\n  Full UBO chain available via authenticated /companies/:orgnr/ownership.'));
+}
+
+
+async function contactsSe(orgnr) {
+  if (!orgnr) die('Usage: nordic-data contacts-se <orgnr>  (Swedish 10-digit organisation number)');
+  const cleaned = String(orgnr).replace(/[-\s]/g, '');
+  if (!/^\d{10}$/.test(cleaned)) die('Swedish orgnr must be 10 digits (with or without dash).');
+  const data = await publicRequest(`/companies/se/${cleaned}/contact`);
+  if (useJson) return console.log(JSON.stringify(data, null, 2));
+  header(`${data.name || 'Swedish company'} ${c('dim', `(${data.orgnr_formatted || cleaned})`)}`);
+  pretty('VAT number', data.vat_number);
+  pretty('Address', data.address);
+  const emails = data.emails || [];
+  const phones = data.phones || [];
+  if (phones.length) pretty('Phone', phones[0]);
+  if (emails.length) pretty('Email', emails[0]);
+  const nc = data.named_contacts || [];
+  if (nc.length) {
+    header('Named contacts');
+    for (const p of nc.slice(0, 10)) {
+      const extras = [p.email, p.phone].filter(Boolean).join('  ·  ');
+      console.log(`  ${c('orange', (p.role || '').slice(0, 32).padEnd(32))} ${c('bold', p.name)}${extras ? c('dim', `  · ${extras}`) : ''}`);
+    }
+  }
+  if (data.cached) console.log(c('dim', `\n  (cached, fetched ${data.fetched_at || ''})`));
+  console.log('');
+  console.log(c('dim', 'Sweden contact data uses your monthly contact-enrichment credits.'));
 }
 
 function mcp() {
@@ -331,7 +521,7 @@ function mcp() {
   };
   console.log(JSON.stringify(snippet, null, 2));
   console.log('');
-  console.log(c('dim', 'Get a free key (5,000 req/mo) at ') + c('cyan', 'https://nordicdata.cloud/?signup=free'));
+  console.log(c('dim', 'Get a free key (500 req/mo) at ') + c('cyan', 'https://nordicdata.cloud/?signup=free'));
   console.log(c('dim', 'Listed on Smithery: ') + c('cyan', 'https://smithery.ai/servers/sofia-jameson-20/Nordic-Data'));
   console.log(c('dim', 'Listed on mcp.so: ') + c('cyan', 'https://mcp.so/server/nordic-data'));
 }
